@@ -19,10 +19,10 @@ Fallback if MediaPipe install breaks on someone's machine: `ultralytics` YOLOv8-
 ## File layout & ownership
 
 ```
-app.py              # Person A — Streamlit UI
-pose_detector.py    # Person B — MediaPipe wrapper
-measurements.py     # Person C — metric formulas
-llm_report.py       # Person D — Claude API + prompt
+app.py              # Ze     — Streamlit UI
+pose_detector.py    # Roy    — MediaPipe wrapper
+measurements.py     # Harper — metric formulas
+llm_report.py       # Eric   — Claude API + prompt
 requirements.txt    # Anyone — pin deps
 .env.example        # Anyone — template
 ```
@@ -75,7 +75,7 @@ def generate_report(
     """Returns markdown report."""
 ```
 
-## Metric formulas (Person C — concrete starting points)
+## Metric formulas (Harper — concrete starting points)
 
 MediaPipe landmark indices: https://google.github.io/mediapipe/solutions/pose
 
@@ -91,7 +91,7 @@ MediaPipe landmark indices: https://google.github.io/mediapipe/solutions/pose
 
 For side view, pick the side that's facing the camera (larger visibility score on landmarks 7 or 8). All thresholds for "normal vs abnormal" go in the LLM prompt, not in code.
 
-## LLM prompt structure (Person D — starting template)
+## LLM prompt structure (Eric — starting template)
 
 ```
 System: You are a posture analysis assistant. You receive measurements and
@@ -116,7 +116,7 @@ Reference thresholds to include in the system prompt:
 
 Use `anthropic` SDK, `client.messages.create(model="claude-sonnet-4-6", max_tokens=1500, ...)`.
 
-## UI layout (Person A)
+## UI layout (Ze)
 
 ```
 [Title: Posture Analyzer]
@@ -153,7 +153,7 @@ python-dotenv
 | Risk | Fallback |
 |---|---|
 | MediaPipe install fails | swap to `ultralytics` YOLOv8-pose (different landmark indices, but same wrapper API) |
-| No API key ready at start | Person D writes mock `generate_report` returning hardcoded markdown; swap in last 5 min |
+| No API key ready at start | Eric writes mock `generate_report` returning hardcoded markdown; swap in last 5 min |
 | Pose detection misses on bad photo | Show user-friendly "couldn't detect person, try a clearer photo" |
 | Time runs out | UI + pose + measurements alone is already a demo-able product; skip LLM, show metrics table |
 
