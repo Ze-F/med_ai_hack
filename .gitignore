@@ -15,3 +15,7 @@ env/
 # IDE
 .vscode/
 .idea/
+
+# Personal test photos
+test photos/
+test_photos/

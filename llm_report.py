@@ -9,13 +9,19 @@ from dotenv import load_dotenv
 # 加载环境变量 (获取 ANTHROPIC_API_KEY)
 load_dotenv()
 
-def _encode_image(img: Image.Image) -> tuple[str, str]:
-    """将 PIL Image 转换为 Anthropic API 要求的 base64 格式"""
-    buffered = io.BytesIO()
-    # 确保图片是 RGB 模式 (去除可能存在的 Alpha 通道，防止 JPEG 报错)
+def _encode_image(img: Image.Image, max_dim: int = 2000) -> tuple[str, str]:
+    """将 PIL Image 转换为 Anthropic API 要求的 base64 格式
+
+    Resize so the longest side is at most max_dim. Claude rejects images
+    over 8000px on any side, and larger images are slower + more expensive
+    without helping posture analysis quality.
+    """
+    img = img.copy()
     if img.mode != "RGB":
         img = img.convert("RGB")
-    img.save(buffered, format="JPEG")
+    img.thumbnail((max_dim, max_dim))
+    buffered = io.BytesIO()
+    img.save(buffered, format="JPEG", quality=85)
     return "image/jpeg", base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 def generate_report(
