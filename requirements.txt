@@ -1,0 +1,7 @@
+streamlit>=1.30
+mediapipe>=0.10
+opencv-python>=4.8
+numpy
+pillow
+anthropic>=0.40
+python-dotenv
