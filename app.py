@@ -269,9 +269,8 @@ if ready_for_editor:
         _show_metrics(front_metrics, side_metrics)
 
         st.subheader("📋 Posture Report")
-        with st.container(border=True):
-            with st.spinner("Generating report with Claude..."):
-                report = generate_report(
-                    front_annotated, side_annotated, front_metrics, side_metrics
-                )
-            st.markdown(report)
+        with st.spinner("Generating report with Claude..."):
+            report = generate_report(
+                front_annotated, side_annotated, front_metrics, side_metrics
+            )
+        st.markdown(report)
