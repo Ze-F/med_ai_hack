@@ -62,7 +62,7 @@ def measure_side(landmarks: np.ndarray) -> dict:
       {
         "head_forward_pct": float,           # ear-x minus shoulder-x, / shoulder-hip dist
         "body_line_deviation_deg": float,    # angle of shoulder-hip-ankle from vertical
-        "pelvic_rotation_deg": float,        # hip-knee line angle from vertical (proxy)
+        "thigh_forward_tilt_deg": float,        # hip-knee line angle from vertical (proxy)
       }
 ```
 
@@ -89,7 +89,7 @@ MediaPipe landmark indices: https://google.github.io/mediapipe/solutions/pose
 | knee_alignment | 25, 26 vs 27, 28 | knees-closer-than-ankles → X; opposite → O |
 | head_forward_pct | 7 or 8 (ear), 11 or 12 (shoulder) | `(ear_x - shoulder_x) / dist(shoulder, hip)` |
 | body_line_deviation_deg | 11, 23, 27 (shoulder-hip-ankle, one side) | angle of shoulder→ankle line from vertical |
-| pelvic_rotation_deg | 23, 25 (or 24, 26) | angle of hip→knee from vertical |
+| thigh_forward_tilt_deg | 23, 25 (or 24, 26) | angle of hip→knee from vertical |
 
 For side view, pick the side that's facing the camera (larger visibility score on landmarks 7 or 8). All thresholds for "normal vs abnormal" go in the LLM prompt, not in code.
 

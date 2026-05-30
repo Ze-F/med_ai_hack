@@ -29,14 +29,14 @@ def measure_front(landmarks: np.ndarray) -> dict:
     Returns:
         {
           "shoulder_height_diff_pct": float,  # |y_L - y_R| / shoulder_width * 100
-          "pelvic_tilt_deg": float,           # angle of L-R hip line from horizontal
+          "pelvic_tilt_deg": float,           # signed: + = left hip lower, - = right hip lower
           "knee_angle_deg": float,            # avg hip-knee-ankle inner angle (L, R)
           "knee_alignment": str,              # "normal" | "X-leg" | "O-leg"
         }
     """
     l_shoulder, r_shoulder = landmarks[11], landmarks[12]
     l_hip, r_hip = landmarks[23], landmarks[24]
-    
+
     # Shoulder height diff pct
     shoulder_width = abs(l_shoulder[0] - r_shoulder[0])
     if shoulder_width > 0:
@@ -45,33 +45,29 @@ def measure_front(landmarks: np.ndarray) -> dict:
     else:
         shoulder_height_diff_pct = 0.0
 
-    # Pelvic tilt (angle from horizontal)
-    # math.atan2(y, x). y is diff, x is diff. 
-    # Horizontal is 0 deg.
+    # Signed pelvic tilt. Image y grows downward, so positive dy means left
+    # hip drawn lower in the image — i.e. the person's left hip is lower.
     dy_hip = l_hip[1] - r_hip[1]
-    dx_hip = l_hip[0] - r_hip[0]
-    pelvic_tilt_deg = abs(math.degrees(math.atan2(dy_hip, dx_hip)))
-    # Map to 0-90 range, handling the fact that atan2 can give 180ish for left-to-right
-    if pelvic_tilt_deg > 90:
-        pelvic_tilt_deg = 180 - pelvic_tilt_deg
+    dx_hip = abs(l_hip[0] - r_hip[0])
+    pelvic_tilt_deg = math.degrees(math.atan2(dy_hip, dx_hip))
 
-    # Knee angles
     l_knee_angle = _angle_between_points(landmarks[23], landmarks[25], landmarks[27])
     r_knee_angle = _angle_between_points(landmarks[24], landmarks[26], landmarks[28])
     knee_angle_deg = (l_knee_angle + r_knee_angle) / 2.0
 
-    # Knee alignment
-    l_knee, r_knee = landmarks[25], landmarks[26]
-    l_ankle, r_ankle = landmarks[27], landmarks[28]
-    knee_dist = abs(l_knee[0] - r_knee[0])
-    ankle_dist = abs(l_ankle[0] - r_ankle[0])
-
-    if knee_angle_deg >= 170.0:
+    # X/O leg from knee-vs-ankle distance ratio (independent of knee bend)
+    knee_dist = abs(landmarks[25][0] - landmarks[26][0])
+    ankle_dist = abs(landmarks[27][0] - landmarks[28][0])
+    if ankle_dist < 1e-6:
         knee_alignment = "normal"
-    elif knee_dist < ankle_dist:
-        knee_alignment = "X-leg"
     else:
-        knee_alignment = "O-leg"
+        ratio = knee_dist / ankle_dist
+        if ratio < 0.7:
+            knee_alignment = "X-leg"
+        elif ratio > 1.5:
+            knee_alignment = "O-leg"
+        else:
+            knee_alignment = "normal"
 
     return {
         "shoulder_height_diff_pct": float(shoulder_height_diff_pct),
@@ -90,7 +86,7 @@ def measure_side(landmarks: np.ndarray) -> dict:
         {
           "head_forward_pct": float,           # (ear_x - shoulder_x) / shoulder-hip distance
           "body_line_deviation_deg": float,    # shoulder->ankle line angle from vertical
-          "pelvic_rotation_deg": float,        # hip->knee line angle from vertical
+          "thigh_forward_tilt_deg": float,     # hip->knee line angle from vertical (proxy for pelvic tilt)
         }
     """
     # Pick side (index 3 is visibility)
@@ -132,13 +128,13 @@ def measure_side(landmarks: np.ndarray) -> dict:
     # Angle from vertical (Y-axis) -> atan2(|dx|, dy)
     body_line_deviation_deg = abs(math.degrees(math.atan2(abs(dx_body), abs(dy_body))))
 
-    # Pelvic rotation (angle of hip->knee from vertical)
-    dx_pelvic = knee[0] - hip[0]
-    dy_pelvic = knee[1] - hip[1]
-    pelvic_rotation_deg = abs(math.degrees(math.atan2(abs(dx_pelvic), abs(dy_pelvic))))
+    # Thigh tilt from vertical (proxy for pelvic anterior/posterior tilt)
+    dx_thigh = knee[0] - hip[0]
+    dy_thigh = knee[1] - hip[1]
+    thigh_forward_tilt_deg = math.degrees(math.atan2(abs(dx_thigh), abs(dy_thigh)))
 
     return {
         "head_forward_pct": float(head_forward_pct),
         "body_line_deviation_deg": float(body_line_deviation_deg),
-        "pelvic_rotation_deg": float(pelvic_rotation_deg),
+        "thigh_forward_tilt_deg": float(thigh_forward_tilt_deg),
     }
