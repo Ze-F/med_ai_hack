@@ -14,26 +14,92 @@ from pose_detector import detect_pose
 
 load_dotenv()
 
-st.set_page_config(page_title="Posture Analyzer", layout="wide", page_icon="🧍")
+st.set_page_config(page_title="Posture Analyzer", layout="centered", page_icon="🧘")
 
 st.markdown(
     """
     <style>
-    .step-pill { display:inline-block; padding:4px 12px; margin-right:8px;
-                 border-radius:999px; font-size:13px; font-weight:600; }
-    .step-active { background:#2563eb; color:white; }
-    .step-done   { background:#16a34a; color:white; }
-    .step-todo   { background:#e5e7eb; color:#6b7280; }
-    .legend { font-size:13px; color:#6b7280; }
-    .legend-dot { display:inline-block; width:10px; height:10px;
-                  border-radius:999px; margin:0 4px 0 12px; vertical-align:middle; }
+    /* hide streamlit chrome for a clean demo look */
+    #MainMenu, footer, header, .stDeployButton { visibility: hidden; height: 0; }
+
+    /* warmer page padding + max width */
+    .block-container { padding-top: 2rem !important; padding-bottom: 4rem !important;
+                       max-width: 980px !important; }
+
+    /* hero */
+    .hero-title { font-size: 44px; font-weight: 700; margin: 0;
+                  color: #2F3D33; letter-spacing: -1px; }
+    .hero-sub   { font-size: 17px; color: #6B7B70; margin-top: 6px; margin-bottom: 32px; }
+
+    /* wizard stepper */
+    .stepper { display: flex; align-items: center; justify-content: center;
+               margin: 8px auto 36px auto; max-width: 620px; }
+    .step    { display: flex; flex-direction: column; align-items: center;
+               min-width: 130px; }
+    .step .circle { width: 36px; height: 36px; border-radius: 50%;
+                    display: flex; align-items: center; justify-content: center;
+                    font-weight: 600; font-size: 15px; transition: all .2s;
+                    border: 2px solid transparent; }
+    .step .label  { font-size: 13px; margin-top: 8px; color: #8A9690; font-weight: 500; }
+
+    .step.todo   .circle { background: #EFEAE2; color: #B5AB9E; }
+    .step.active .circle { background: #9CAF88; color: white;
+                           box-shadow: 0 0 0 6px rgba(156,175,136,.18); }
+    .step.active .label  { color: #2F3D33; font-weight: 600; }
+    .step.done   .circle { background: #6F8B61; color: white; }
+    .step.done   .label  { color: #5A6B5D; }
+
+    .line { flex: 1; height: 2px; background: #E8E2D6; max-width: 80px;
+            margin: 0 -10px; margin-bottom: 22px; }
+    .line.done { background: #9CAF88; }
+
+    /* upload box softening */
+    [data-testid="stFileUploader"] section {
+        border: 2px dashed #D4CBB9 !important;
+        background: #FBF8F1 !important;
+        border-radius: 14px !important;
+        padding: 28px !important;
+    }
+    [data-testid="stFileUploader"] section:hover { border-color: #9CAF88 !important; }
+
+    /* metric cards softer */
+    [data-testid="stMetric"] { background: white; border-radius: 14px;
+                               padding: 14px 16px;
+                               box-shadow: 0 1px 3px rgba(60,60,60,.04),
+                                           0 0 0 1px #EFEAE2; }
+    [data-testid="stMetricLabel"] { color: #6B7B70 !important; font-size: 13px !important; }
+
+    /* primary button warm */
+    .stButton > button[kind="primary"] {
+        background: #9CAF88; border: none; padding: 12px 28px;
+        border-radius: 12px; font-weight: 600; font-size: 16px;
+        box-shadow: 0 2px 8px rgba(156,175,136,.25);
+    }
+    .stButton > button[kind="primary"]:hover { background: #88A073; }
+
+    .legend { font-size:12px; color:#8A9690; margin-top: 6px; }
+    .legend-dot { display:inline-block; width:8px; height:8px;
+                  border-radius:999px; margin:0 4px 0 10px; vertical-align:middle; }
+
+    .section-title { font-size: 20px; font-weight: 600; color: #2F3D33;
+                     margin: 28px 0 4px 0; }
+    .section-sub   { font-size: 14px; color: #8A9690; margin-bottom: 16px; }
+
+    hr { border-color: #EFEAE2 !important; }
     </style>
     """,
     unsafe_allow_html=True,
 )
 
-st.title("🧍 Posture Analyzer")
-st.caption("Upload front + side standing photos. Adjust landmarks if needed. Get an AI posture report.")
+st.markdown(
+    """
+    <div style="text-align:center;">
+      <div class="hero-title">🧘 Posture Analyzer</div>
+      <div class="hero-sub">Snap two photos. We'll spot what your body is asking you to change.</div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)
 
 
 FRONT_LANDMARKS = [
@@ -67,12 +133,22 @@ METRIC_LABELS = {
 
 
 def _step_indicator(current: int):
-    labels = ["1. Upload", "2. Verify landmarks", "3. Report"]
-    html = ""
+    labels = ["Upload", "Verify landmarks", "Report"]
+    parts = ['<div class="stepper">']
     for i, label in enumerate(labels, 1):
-        cls = "step-active" if i == current else ("step-done" if i < current else "step-todo")
-        html += f'<span class="step-pill {cls}">{label}</span>'
-    st.markdown(html, unsafe_allow_html=True)
+        state = "active" if i == current else ("done" if i < current else "todo")
+        mark = "✓" if state == "done" else str(i)
+        parts.append(
+            f'<div class="step {state}">'
+            f'  <div class="circle">{mark}</div>'
+            f'  <div class="label">{label}</div>'
+            f"</div>"
+        )
+        if i < len(labels):
+            line_state = "done" if i < current else ""
+            parts.append(f'<div class="line {line_state}"></div>')
+    parts.append("</div>")
+    st.markdown("".join(parts), unsafe_allow_html=True)
 
 
 @st.cache_data(show_spinner="Detecting pose...")
@@ -186,7 +262,6 @@ def _metric_card(label: str, value, key: str, unit: str = ""):
 
 
 def _show_metrics(front_metrics: dict, side_metrics: dict):
-    st.subheader("Measurements")
     st.markdown("**Front view**")
     cols = st.columns(4)
     with cols[0]:
@@ -215,17 +290,28 @@ def _show_metrics(front_metrics: dict, side_metrics: dict):
                      side_metrics["thigh_forward_tilt_deg"], "thigh_forward_tilt_deg", "°")
 
 
+if "report_generated" not in st.session_state:
+    st.session_state.report_generated = False
+
+stepper_slot = st.empty()
+
 # ====== STEP 1: UPLOAD ======
-current_step = 1
 ready_for_editor = False
+front_image = side_image = None
+front_landmarks = side_landmarks = None
+front_annotated = side_annotated = None
+
+st.markdown('<div class="section-title">📷 Upload your photos</div>', unsafe_allow_html=True)
+st.markdown(
+    '<div class="section-sub">Two clear, full-body shots: facing the camera, then turned 90° to one side.</div>',
+    unsafe_allow_html=True,
+)
 
 col_front, col_side = st.columns(2)
 with col_front:
-    st.subheader("📷 Front view")
-    front_file = st.file_uploader("Upload front photo", type=["jpg", "jpeg", "png"], key="front")
+    front_file = st.file_uploader("Front view", type=["jpg", "jpeg", "png"], key="front")
 with col_side:
-    st.subheader("📷 Side view")
-    side_file = st.file_uploader("Upload side photo", type=["jpg", "jpeg", "png"], key="side")
+    side_file = st.file_uploader("Side view", type=["jpg", "jpeg", "png"], key="side")
 
 if front_file and side_file:
     front_image, front_landmarks, front_annotated = _run_detection(front_file.getvalue())
@@ -235,18 +321,18 @@ if front_file and side_file:
     if side_landmarks is None:
         st.error("❌ No person detected in side photo. Try a clearer full-body shot.")
     ready_for_editor = front_landmarks is not None and side_landmarks is not None
-    if ready_for_editor:
-        current_step = 2
-
-st.divider()
-_step_indicator(current_step)
-st.divider()
 
 # ====== STEP 2: VERIFY LANDMARKS ======
 adjusted_front = adjusted_side = None
 if ready_for_editor:
-    st.subheader("✏️ Verify & adjust landmarks")
-    st.caption("Pose detection may have small errors. Drag any dot to its correct position.")
+    st.markdown(
+        '<div class="section-title">✏️ Verify the landmarks</div>',
+        unsafe_allow_html=True,
+    )
+    st.markdown(
+        '<div class="section-sub">Pose detection isn\'t perfect. Drag any dot to nudge it onto the right joint.</div>',
+        unsafe_allow_html=True,
+    )
     edit_col1, edit_col2 = st.columns(2)
     with edit_col1:
         st.markdown("**Front**")
@@ -260,17 +346,29 @@ if ready_for_editor:
             side_image, side_landmarks, side_set, key="side_editor"
         )
 
-    st.divider()
-    if st.button("🚀 Analyze posture", type="primary", use_container_width=True):
-        current_step = 3
+    st.write("")
+    if st.button("Analyze posture", type="primary", use_container_width=True):
+        st.session_state.report_generated = True
         front_metrics = measure_front(adjusted_front)
         side_metrics = measure_side(adjusted_side)
 
+        st.markdown(
+            '<div class="section-title">📊 Your measurements</div>',
+            unsafe_allow_html=True,
+        )
         _show_metrics(front_metrics, side_metrics)
 
-        st.subheader("📋 Posture Report")
+        st.markdown(
+            '<div class="section-title">📋 Posture report</div>',
+            unsafe_allow_html=True,
+        )
         with st.spinner("Generating report with Claude..."):
             report = generate_report(
                 front_annotated, side_annotated, front_metrics, side_metrics
             )
         st.markdown(report)
+
+# Render stepper into the top slot now that we know the state
+current_step = 3 if st.session_state.report_generated else (2 if ready_for_editor else 1)
+with stepper_slot:
+    _step_indicator(current_step)
