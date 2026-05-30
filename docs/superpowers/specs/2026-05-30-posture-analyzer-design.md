@@ -1,6 +1,6 @@
 # Posture Analyzer — Hackathon MVP Spec
 
-**Time budget:** 1.5 hours, 4 people. Goal: working demo, not production code.
+**Time budget:** 1.5 hours, 3 coders (Ze, Roy, Harper). Goal: working demo, not production code.
 
 ## What we're building
 
@@ -19,13 +19,15 @@ Fallback if MediaPipe install breaks on someone's machine: `ultralytics` YOLOv8-
 ## File layout & ownership
 
 ```
-app.py              # Ze     — Streamlit UI
+app.py              # Ze     — Streamlit UI + integration
 pose_detector.py    # Roy    — MediaPipe wrapper
-measurements.py     # Harper — metric formulas
-llm_report.py       # Eric   — Claude API + prompt
-requirements.txt    # Anyone — pin deps
-.env.example        # Anyone — template
+measurements.py     # Roy    — metric formulas (paired with pose_detector)
+llm_report.py       # Harper — Claude API + prompt
+requirements.txt    # Ze     — pin deps
+.env.example        # Ze     — template
 ```
+
+**Why this split:** `pose_detector` and `measurements` share landmark format details, so one owner avoids back-and-forth. `llm_report` is fully independent — Harper can start immediately with mock metric dicts. `app.py` is the glue layer, naturally last to integrate.
 
 ## Contracts between files (LOCK THESE FIRST)
 
@@ -75,7 +77,7 @@ def generate_report(
     """Returns markdown report."""
 ```
 
-## Metric formulas (Harper — concrete starting points)
+## Metric formulas (Roy — concrete starting points)
 
 MediaPipe landmark indices: https://google.github.io/mediapipe/solutions/pose
 
@@ -91,7 +93,7 @@ MediaPipe landmark indices: https://google.github.io/mediapipe/solutions/pose
 
 For side view, pick the side that's facing the camera (larger visibility score on landmarks 7 or 8). All thresholds for "normal vs abnormal" go in the LLM prompt, not in code.
 
-## LLM prompt structure (Eric — starting template)
+## LLM prompt structure (Harper — starting template)
 
 ```
 System: You are a posture analysis assistant. You receive measurements and
@@ -153,7 +155,7 @@ python-dotenv
 | Risk | Fallback |
 |---|---|
 | MediaPipe install fails | swap to `ultralytics` YOLOv8-pose (different landmark indices, but same wrapper API) |
-| No API key ready at start | Eric writes mock `generate_report` returning hardcoded markdown; swap in last 5 min |
+| No API key ready at start | Harper writes mock `generate_report` returning hardcoded markdown; swap in last 5 min |
 | Pose detection misses on bad photo | Show user-friendly "couldn't detect person, try a clearer photo" |
 | Time runs out | UI + pose + measurements alone is already a demo-able product; skip LLM, show metrics table |
 
