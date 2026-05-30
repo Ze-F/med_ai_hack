@@ -4,7 +4,11 @@ Upload front + side standing photos → detect joints → measure posture → Cl
 
 ## Setup
 
+**Requires Python 3.10–3.12.** MediaPipe ≥0.10.22 dropped the `solutions.pose` API, and Python 3.13+ has no wheels with it. Use `python3.12`.
+
 ```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 cp .env.example .env   # then fill in ANTHROPIC_API_KEY
 streamlit run app.py
