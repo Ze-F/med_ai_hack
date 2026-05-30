@@ -1,6 +1,7 @@
 """MediaPipe Pose wrapper. Owner: Roy."""
 
 import numpy as np
+import mediapipe as mp
 from PIL import Image
 
 
@@ -16,13 +17,43 @@ def detect_pose(image: Image.Image) -> tuple[np.ndarray | None, Image.Image]:
                    None if no person detected.
         annotated_image: original image with skeleton drawn on top.
     """
-    # TODO Roy: replace mock with MediaPipe Pose
-    #   1. mp_pose = mediapipe.solutions.pose.Pose(static_image_mode=True)
-    #   2. results = mp_pose.process(cv2.cvtColor(np.array(image), cv2.COLOR_RGB2BGR))
-    #   3. landmarks = np.array([[lm.x, lm.y, lm.z, lm.visibility]
-    #                            for lm in results.pose_landmarks.landmark])
-    #   4. draw with mp.solutions.drawing_utils.draw_landmarks(...)
-    #   5. convert back to PIL.Image
+    mp_pose = mp.solutions.pose
+    mp_drawing = mp.solutions.drawing_utils
+    mp_drawing_styles = mp.solutions.drawing_styles
 
-    mock_landmarks = np.tile([0.5, 0.5, 0.0, 1.0], (33, 1))
-    return mock_landmarks, image
+    # Initialize MediaPipe Pose for static images
+    with mp_pose.Pose(
+        static_image_mode=True,
+        model_complexity=1,
+        min_detection_confidence=0.5
+    ) as pose:
+        
+        # MediaPipe expects RGB images. Convert PIL image to numpy array (RGB)
+        image_np = np.array(image.convert("RGB"))
+        
+        # Process the image to find the pose
+        results = pose.process(image_np)
+
+        # If no pose is detected, return None and the original image
+        if not results.pose_landmarks:
+            return None, image
+
+        # Extract landmarks into a (33, 4) numpy array
+        landmarks = np.array([
+            [lm.x, lm.y, lm.z, lm.visibility]
+            for lm in results.pose_landmarks.landmark
+        ])
+
+        # Draw the pose annotation on a copy of the image
+        annotated_image_np = image_np.copy()
+        mp_drawing.draw_landmarks(
+            annotated_image_np,
+            results.pose_landmarks,
+            mp_pose.POSE_CONNECTIONS,
+            landmark_drawing_spec=mp_drawing_styles.get_default_pose_landmarks_style()
+        )
+
+        # Convert the annotated numpy array back to a PIL Image
+        annotated_image = Image.fromarray(annotated_image_np)
+
+        return landmarks, annotated_image
